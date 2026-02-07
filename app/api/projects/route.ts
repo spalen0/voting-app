@@ -3,7 +3,7 @@ import { getProjects, createProject, getVoteAverages } from '@/lib/store';
 
 export async function GET(request: NextRequest) {
   const all = request.nextUrl.searchParams.get('all') === 'true';
-  const projects = getProjects(all ? 0 : 10);
+  const projects = await getProjects(all ? 0 : 10);
   const result = projects.map((p) => ({
     id: p.id,
     name: p.name,
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 });
   }
 
-  const project = createProject({
+  const project = await createProject({
     name: body.name.trim(),
     description: body.description?.trim() || undefined,
     imageUrl: body.imageUrl || undefined,

@@ -5,7 +5,7 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const project = getProject(params.id);
+  const project = await getProject(params.id);
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
@@ -23,7 +23,7 @@ export async function POST(
     }
   }
 
-  const vote = addVote(params.id, {
+  const vote = await addVote(params.id, {
     generalUsefulness: body.generalUsefulness,
     usefulnessToYearn: body.usefulnessToYearn,
     creativity: body.creativity,
