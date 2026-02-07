@@ -21,20 +21,22 @@ export interface Project {
 
 type ProjectMeta = Omit<Project, 'votes'>;
 
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL!,
-  token: process.env.KV_REST_API_TOKEN!,
-});
+function getRedis() {
+  return new Redis({
+    url: process.env.KV_REST_API_URL!,
+    token: process.env.KV_REST_API_TOKEN!,
+  });
+}
 
 export async function getProjects(limit = 10): Promise<Project[]> {
   const ids: string[] =
     limit === 0
-      ? await redis.zrange('projects', 0, -1, { rev: true })
-      : await redis.zrange('projects', 0, limit - 1, { rev: true });
+      ? await getRedis().zrange('projects', 0, -1, { rev: true })
+      : await getRedis().zrange('projects', 0, limit - 1, { rev: true });
 
   if (ids.length === 0) return [];
 
-  const metas = await redis.mget<(ProjectMeta | null)[]>(
+  const metas = await getRedis().mget<(ProjectMeta | null)[]>(
     ...ids.map((id) => `project:${id}`)
   );
 
@@ -42,7 +44,7 @@ export async function getProjects(limit = 10): Promise<Project[]> {
   for (let i = 0; i < ids.length; i++) {
     const meta = metas[i];
     if (!meta) continue;
-    const votes = await redis.lrange<Vote>(`votes:${ids[i]}`, 0, -1);
+    const votes = await getRedis().lrange<Vote>(`votes:${ids[i]}`, 0, -1);
     projects.push({ ...meta, votes });
   }
 
@@ -50,9 +52,9 @@ export async function getProjects(limit = 10): Promise<Project[]> {
 }
 
 export async function getProject(id: string): Promise<Project | undefined> {
-  const meta = await redis.get<ProjectMeta>(`project:${id}`);
+  const meta = await getRedis().get<ProjectMeta>(`project:${id}`);
   if (!meta) return undefined;
-  const votes = await redis.lrange<Vote>(`votes:${id}`, 0, -1);
+  const votes = await getRedis().lrange<Vote>(`votes:${id}`, 0, -1);
   return { ...meta, votes };
 }
 
@@ -71,8 +73,8 @@ export async function createProject(data: {
     createdAt,
   };
 
-  await redis.set(`project:${id}`, meta);
-  await redis.zadd('projects', { score: createdAt, member: id });
+  await getRedis().set(`project:${id}`, meta);
+  await getRedis().zadd('projects', { score: createdAt, member: id });
 
   return { ...meta, votes: [] };
 }
@@ -86,7 +88,7 @@ export async function addVote(
     executionClarity: number;
   }
 ): Promise<Vote | null> {
-  const meta = await redis.get<ProjectMeta>(`project:${projectId}`);
+  const meta = await getRedis().get<ProjectMeta>(`project:${projectId}`);
   if (!meta) return null;
 
   const vote: Vote = {
@@ -95,7 +97,7 @@ export async function addVote(
     createdAt: Date.now(),
   };
 
-  await redis.rpush(`votes:${projectId}`, vote);
+  await getRedis().rpush(`votes:${projectId}`, vote);
   return vote;
 }
 
